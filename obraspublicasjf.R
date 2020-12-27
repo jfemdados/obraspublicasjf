@@ -13,7 +13,7 @@ library(psych)
 library(readr)
 library(treemap)
 library(shiny)
-#OBRAS P⁄BLICAS
+#OBRAS P√öBLICAS
 
 
 #criando a base
@@ -22,19 +22,42 @@ segsem2020 <- read_excel("C:/Users/Matheus/Desktop/jotaefe/segsemestre2020.xlsx"
                                col_types = c("text", "numeric", "text", 
                                                   "date", "date", "numeric", "numeric", 
                                              "text"))%>%
-  #tirando valores sem identificaÁ„o
+  #tirando valores sem identifica√ß√£o
   filter(Objeto != is.na(Objeto), `Valor total` != is.na(`Valor total`))%>%
-  #gerando dummies para obras fora do prazo, atrasadas pela execuÁ„o financeira e concluidas
-  mutate(concluida = case_when(`SituaÁ„o atual da obra` == 'ConcluÌda' ~1),
-         foradoprazo = case_when(`Data prevista para tÈrmino ou prazo de execuÁ„o` < '2020-09-08'
-         & `SituaÁ„o atual da obra` != 'ConcluÌda' ~1))%>%
+  #gerando dummies para obras fora do prazo, atrasadas pela execu√ß√£o financeira e concluidas
+  mutate(concluida = case_when(`Situa√ß√£o atual da obra` == 'Conclu√≠da' ~1),
+         foradoprazo = case_when(`Data prevista para t√©rmino ou prazo de execu√ß√£o` < '2020-09-08'
+         & `Situa√ß√£o atual da obra` != 'Conclu√≠da' ~1))%>%
   replace_na(list(foradoprazo =0 ,concluida = 0, atrasada = 0))%>%
   mutate(andamento = case_when(concluida == 0 & foradoprazo ==0 ~ 1))%>%
   replace_na(list(andamento =0))%>%
   mutate(obra=1)
+#Classificando tipo da obra
+  mutate(Objeto= str_to_lower(Objeto))%>%
+  mutate(class_objeto = case_when(
+    str_detect(Objeto, "uaps|ubs|regional leste|hospital") ~ "saude",
+    str_detect(Objeto, "creche|e\\.m\\.") ~ "educacao",
+    str_detect(Objeto, "pavimenta√ß√£o|asf[a√°]l|viaduto") ~ "infraestrutura de transportes",
+    str_detect(Objeto, "conten√ß√£o") ~ "conten√ß√£o de morros",
+    str_detect(Objeto, "despolui√ß√£o") ~ "meio ambiente",
+    str_detect(Objeto, "gin√°sio") ~ "ginasio",
+    TRUE ~ "outros"
+  ))%>%
+  rename(valor = `Valor total`)
+
+#Grafico_por_area
+valor_por_area<- segsem2020%>%
+  group_by(class_objeto)%>%
+  tally(valor, name = "valor")
+
+valor_por_area %>%
+  ggplot(aes(x=class_objeto, y= valor)) +geom_col() +
+  geom_text( aes(label = valor)) +
+  labs(title= "Valor das Obras da Prefeitura de Juiz de Fora por √Årea", caption =  "Fonte: Prefeitura JF" ) +
+  theme_bw()
 
 
-##estatÌsticas
+##estat√≠sticas
 
 
 somatorio <- segsem2020%>%
@@ -45,7 +68,7 @@ somatorio <- segsem2020%>%
          porc_concluida = (concluida/obra)*100,
          porc_foradoprazo = (foradoprazo/obra)*100)
 
-situacao<- c('Em Andamento: 68,9%', "ConcluÌda: 6,8%", "Fora do Prazo: 24,1%")
+situacao<- c('Em Andamento: 68,9%', "Conclu√≠da: 6,8%", "Fora do Prazo: 24,1%")
 
 
 porcentagem <- c(somatorio$porc_andamento,
@@ -60,14 +83,14 @@ treemap(treemapds,
         index="situacao",
         vSize="porcentagem",
         type="index",
-        title="Obras P˙blicas em Juiz de Fora",                      # Customize your title
+        title="Obras P√∫blicas em Juiz de Fora",                      # Customize your title
         fontsize.title=15, 
         fontsize.labels=16
 )
 
 #grafico de colunas com cada um dos casos 
 
-situacao<- c('Em Andamento: 68,9%', "ConcluÌda: 6,8%", "Fora do Prazo: 24,1%")
+situacao<- c('Em Andamento: 68,9%', "Conclu√≠da: 6,8%", "Fora do Prazo: 24,1%")
 
 
 porcentagem <- c(somatorio$porc_andamento,
@@ -76,21 +99,21 @@ porcentagem <- c(somatorio$porc_andamento,
 
 treemapds <- tibble(situacao,porcentagem)%>%
   arrange(porcentagem)%>%
-  mutate(bem = if_else(situacao == "ConcluÌda: 6,8%","sim","n„o"))
+  mutate(bem = if_else(situacao == "Conclu√≠da: 6,8%","sim","n√£o"))
 
 ggplot(treemapds, aes(x= reorder(situacao, porcentagem) , y=porcentagem , group=1, fill= bem)) +
   geom_col()  + 
-    labs(x = "SituaÁ„o da Obra", y = "Porcentagem de Obras ",
-         title = "Como est„o as obras em JF") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
+    labs(x = "Situa√ß√£o da Obra", y = "Porcentagem de Obras ",
+         title = "Como est√£o as obras em JF") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
     axis.ticks = element_line(size = 1.2)) + theme(legend.position = "none")
 
 
-#execuÁ„o financeira dessas obras aÌ?
+#execu√ß√£o financeira dessas obras a√≠?
 
 
 emandamento <- segsem2020%>%
   filter(andamento==1)%>%
-  mutate(nemcomecou = if_else(`Percentual de execuÁ„o financeira` < 0.0001,1,0),
+  mutate(nemcomecou = if_else(`Percentual de execu√ß√£o financeira` < 0.0001,1,0),
          jacomecou = if_else(nemcomecou == 0,1,0))%>%
   
 
@@ -99,34 +122,34 @@ colapsadoemandamento <- emandamento%>%
   mutate(p_nem = (nemcomecou/obra)*100 , p_ja = (jacomecou/obra)*100)
 
 porc <- c(30, 70)
-situ <- c("Nem comeÁou", "J· comeÁou")
-marca <- c('n„o', 'sim')
+situ <- c("Nem come√ßou", "J√° come√ßou")
+marca <- c('n√£o', 'sim')
 
 execobras <- tibble(situ, porc, marca)
 
 
 ggplot(execobras, aes(x= reorder(situ, porc) , y=porc, group=1, fill= marca)) +
   geom_col()  + 
-  labs(x = "SituaÁ„o das Obras em Andamento", y = "Porcentagem de Obras nessa SituaÁ„o",
-       title = "Como est„o as obras em andamento") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
+  labs(x = "Situa√ß√£o das Obras em Andamento", y = "Porcentagem de Obras nessa Situa√ß√£o",
+       title = "Como est√£o as obras em andamento") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
                                                                       axis.ticks = element_line(size = 1.2)) + theme(legend.position = "none")
 
 
 
-#correlacionando data de entrega e percentual de execuÁ„o financeira
-ggplot(emandamento, aes(x=`Data prevista para tÈrmino ou prazo de execuÁ„o` 
-                        , y=`Percentual de execuÁ„o financeira`, group=1)) +
+#correlacionando data de entrega e percentual de execu√ß√£o financeira
+ggplot(emandamento, aes(x=`Data prevista para t√©rmino ou prazo de execu√ß√£o` 
+                        , y=`Percentual de execu√ß√£o financeira`, group=1)) +
   geom_point(size = 6, position = 'jitter')  + 
-  labs(x = "Prazo de conclus„o", y = "Percentual de ExecuÁ„o Financeira",
-       title = "ExecuÁ„o financeira e prazo de conclus„o das obras em andamento") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
+  labs(x = "Prazo de conclus√£o", y = "Percentual de Execu√ß√£o Financeira",
+       title = "Execu√ß√£o financeira e prazo de conclus√£o das obras em andamento") + theme_classic() + theme(axis.line = element_line(linetype = "solid"), 
                                                                              axis.ticks = element_line(size = 1.2)) + theme(legend.position = "none")
 
 
 #
-ggplot(emandamento, aes(x=`Valor total`, y=`Percentual de execuÁ„o financeira`, group=1)) +
+ggplot(emandamento, aes(x=`Valor total`, y=`Percentual de execu√ß√£o financeira`, group=1)) +
   geom_point(size = 6, position = 'jitter')  + 
-labs(x = "Valor Total da Obra", y = "Percentual de ExecuÁ„o Financeira",
-  title = "ExecuÁ„o financeira e valor das obras em andamento") +
+labs(x = "Valor Total da Obra", y = "Percentual de Execu√ß√£o Financeira",
+  title = "Execu√ß√£o financeira e valor das obras em andamento") +
   theme_classic() + 
   theme(axis.line = element_line(linetype = "solid"), axis.ticks = element_line(size = 1.2))
 + theme(legend.position = "none")
